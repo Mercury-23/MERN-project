@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/idurar/idurar-erp-crm,549,312
+/idurar/idurar-erp-crm/tree/master/models/erpModels,65,24
+/idurar/idurar-erp-crm/tree/master/controllers,64,29
+/idurar/idurar-erp-crm/tree/master/models,64,26
+/idurar/idurar-erp-crm/tree/master/frontends/erpFrontend,61,27
+/idurar/idurar-erp-crm/tree/master/frontends/erpFrontend/src,49,21
+/idurar/idurar-erp-crm/tree/master/controllers/erpControllers,47,22
+/idurar/idurar-erp-crm/tree/master/middlewares,36,17
+/idurar/idurar-erp-crm/tree/master/controllers/corsControllers,29,14
+/idurar/idurar-erp-crm/tree/master/routes/erpRoutes,27,9
