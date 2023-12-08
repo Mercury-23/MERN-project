@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const moment = require('moment');
 const Model = mongoose.model('Invoice');
 const custom = require('../corsControllers/custom');
-
+const sendMail = require('./mailInvoiceController');
 const crudController = require('../corsControllers/crudController');
 const methods = crudController.createCRUDController('Invoice');
 
@@ -163,7 +163,15 @@ methods.summary = async (req, res) => {
     const { type } = req.query;
 
     if (type) {
-      defaultType = type;
+      if (['week', 'month', 'year'].includes(type)) {
+        defaultType = type
+      } else {
+        return res.status(400).json({
+          success: false,
+          result: null,
+          message: 'Invalid type',
+        });
+      }
     }
 
     const currentDate = moment();
@@ -195,15 +203,37 @@ methods.summary = async (req, res) => {
           count: {
             $sum: 1,
           },
+          total_amount: {
+            $sum: '$total',
+          },
         },
       },
       {
-        $project: {
-          status: '$_id',
-          count: 1,
-          percentage: {
-            $multiply: [{ $divide: ['$count', { $sum: '$count' }] }, 100],
+        $group: {
+          _id: null,
+          total_count: {
+            $sum: '$count',
           },
+          results: {
+            $push: '$$ROOT',
+          },
+        },
+      },
+      {
+        $unwind: '$results',
+      },
+      {
+        $project: {
+          _id: 0,
+          status: '$results._id',
+          count: '$results.count',
+          percentage: {
+            $round: [
+              { $multiply: [{ $divide: ['$results.count', '$total_count'] }, 100] },
+              1,
+            ],
+          },
+          total_amount: '$results.total_amount',
         },
       },
       {
@@ -213,13 +243,40 @@ methods.summary = async (req, res) => {
       },
     ]);
 
-    const total = result.reduce((acc, item) => acc + item.count, 0);
+    const unpaid = await Model.aggregate([
+      {
+        $match: {
+          removed: false,
+          date: {
+            $gte: startDate.toDate(),
+            $lte: endDate.toDate(),
+          },
+          paymentStatus: 'unpaid',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total_amount: {
+            $sum: '$total',
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          total_amount: '$total_amount',
+        },
+      },
+    ])
 
     const finalResult = {
-      total,
-      type: defaultType,
+      total: result.reduce((acc, item) => acc + item.total_amount, 0).toFixed(2),
+      total_undue: unpaid.length > 0 ? unpaid[0].total_amount.toFixed(2) : 0,
+      type,
       performance: result,
     };
+
 
     return res.status(200).json({
       success: true,
@@ -330,4 +387,5 @@ methods.summary = async (req, res) => {
 //   }
 // };
 
+methods.sendMail = sendMail;
 module.exports = methods;
